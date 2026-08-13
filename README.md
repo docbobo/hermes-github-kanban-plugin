@@ -51,6 +51,17 @@ hermes github-kanban webhook --url  # current public webhook URL (from zrok)
 /github-kanban status   /github-kanban list   /github-kanban sync   /github-kanban help
 ```
 
+## Bundled skill
+
+The operating runbook ships **inside the plugin** and is registered via
+`ctx.register_skill` as `github-kanban:github-kanban` — it installs with the
+plugin, no separate flat-skill copy. Load it explicitly when you need the
+bridge operating guide:
+
+```
+skill_view(name='github-kanban:github-kanban')
+```
+
 ## Requirements
 
 - `GITHUB_TOKEN` in `~/.hermes/.env`

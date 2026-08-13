@@ -18,9 +18,9 @@ cp -r plugin/* "$PLUGIN_DIR/"
 mkdir -p "$SCRIPT_DIR"
 cp scripts/*.py "$SCRIPT_DIR/"
 
-# Copy skill
-mkdir -p "$HERMES_HOME/skills/github-kanban"
-cp skills/SKILL.md "$HERMES_HOME/skills/github-kanban/SKILL.md"
+# The operating skill is BUNDLED inside the plugin (plugin/skills/github-kanban/)
+# and registered via ctx.register_skill as 'github-kanban:github-kanban'.
+# It is copied with the plugin source above — no separate flat-skill install.
 
 echo ""
 echo "Plugin installed to: $PLUGIN_DIR"

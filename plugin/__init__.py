@@ -46,3 +46,9 @@ def register(ctx):
         setup_fn=setup_cli,
         handler_fn=handle_cli,
     )
+
+    # --- Bundled operating skill (resolvable as 'github-kanban:github-kanban') ---
+    from pathlib import Path
+    skill_path = Path(__file__).parent / "skills" / "github-kanban" / "SKILL.md"
+    if skill_path.exists():
+        ctx.register_skill("github-kanban", skill_path)
