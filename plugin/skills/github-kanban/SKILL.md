@@ -36,6 +36,24 @@ GitHub issue (opened/reopened)
 | `review` | `reviewer` |
 | (none / other) | `orchestrator` |
 
+## Projects (onboarded repos)
+
+The bridge only creates kanban tasks for issues from **onboarded projects** — a
+GitHub repo (`owner/repo`) you've explicitly wired in. Onboarding registers a
+GitHub webhook on the repo (pointing at the bridge's public zrok URL) and adds
+the repo to the config's `projects` list. Removing deletes the webhook and drops
+the repo. If the `projects` list is empty, the bridge accepts issues from any
+repo (legacy behavior).
+
+```bash
+hermes github-kanban project list
+hermes github-kanban project onboard e8kor/agentic-foundation
+hermes github-kanban project remove e8kor/agentic-foundation
+```
+
+The webhook script (`github-issue-to-kanban.py`) silently ignores issues from
+repos not in the `projects` list.
+
 ## CLI commands
 
 ```bash
@@ -47,6 +65,9 @@ hermes github-kanban assign <id> <profile>  # reassign a task
 hermes github-kanban webhook        # show webhook route + secret
 hermes github-kanban webhook --url  # print the current public webhook URL (from zrok)
 hermes github-kanban install-sweep  # show how to install the cron sweep job
+hermes github-kanban project list   # list onboarded GitHub repos
+hermes github-kanban project onboard <owner/repo>   # register webhook + add repo
+hermes github-kanban project remove <owner/repo>     # delete webhook + drop repo
 ```
 
 ## Slash commands (in chat)
@@ -65,6 +86,7 @@ hermes github-kanban install-sweep  # show how to install the cron sweep job
 - `github_kanban_create_task` — create a task
 - `github_kanban_sync` — force sync sweep
 - `github_kanban_assign` — reassign a task
+- `github_kanban_project` — onboard/remove/list GitHub projects
 
 ## Components
 

@@ -7,5 +7,6 @@ provides_tools:
   - github_kanban_create_task
   - github_kanban_sync
   - github_kanban_assign
+  - github_kanban_project
 requires_env:
   - GITHUB_TOKEN

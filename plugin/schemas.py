@@ -61,4 +61,17 @@ SCHEMAS = {
             "required": [],
         },
     },
+    "github_kanban_project": {
+        "name": "github_kanban_project",
+        "description": "Onboard, remove, or list GitHub projects (repos) wired into the kanban bridge. Onboard registers a GitHub webhook on the repo and adds it to the config so its issues flow into the board; remove deletes the webhook and drops the repo. Use to manage which repos feed the kanban.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "action": {"type": "string", "enum": ["onboard", "remove", "list"], "description": "What to do"},
+                "repo": {"type": "string", "description": "owner/repo (required for onboard/remove)"},
+                "url": {"type": "string", "description": "Public webhook URL (optional; auto-detected from zrok)"},
+            },
+            "required": ["action"],
+        },
+    },
 }

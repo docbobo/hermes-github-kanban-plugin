@@ -58,6 +58,16 @@ def setup_cli(subparser):
                            help="Define a flow stage with description (repeatable)")
     p_prepare.add_argument("--reset", action="store_true", help="Reset config to defaults")
 
+    # project — onboard/remove/list GitHub repos wired into the bridge
+    p_project = sub.add_parser("project", help="Manage onboarded GitHub projects (repos)")
+    pj = p_project.add_subparsers(dest="project_action")
+    pj_onboard = pj.add_parser("onboard", help="Onboard a GitHub repo: register webhook + add to config")
+    pj_onboard.add_argument("repo", help="owner/repo")
+    pj_onboard.add_argument("--url", help="Public webhook URL (default: auto-detect from zrok)")
+    pj_remove = pj.add_parser("remove", help="Remove a GitHub repo: delete webhook + drop from config")
+    pj_remove.add_argument("repo", help="owner/repo")
+    pj.add_parser("list", help="List onboarded projects")
+
 
 def handle_cli(args):
     """Handle `hermes github-kanban <action>`."""
@@ -82,6 +92,8 @@ def handle_cli(args):
         _cli_install_sweep(args)
     elif action == "prepare":
         _cli_prepare(args)
+    elif action == "project":
+        _cli_project(args)
 
 
 def _cli_status():
@@ -256,12 +268,32 @@ def _cli_prepare(args):
         print("No changes. Use --show to view current config, or pass options to update.")
 
 
+def _cli_project(args):
+    """Onboard / remove / list GitHub projects wired into the bridge."""
+    script = os.path.join(os.path.dirname(__file__), "..", "scripts", "github-project-manage.py")
+    script = os.path.abspath(script)
+    action = getattr(args, "project_action", None)
+    if not action:
+        print("Usage: hermes github-kanban project <onboard|remove|list>")
+        return
+    cmd = ["python3", script, action]
+    if action in ("onboard", "remove"):
+        cmd.append(args.repo)
+        if action == "onboard" and getattr(args, "url", None):
+            cmd += ["--url", args.url]
+    r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    print(r.stdout.strip())
+    if r.stderr.strip():
+        print(f"[stderr] {r.stderr.strip()[:300]}")
+
+
 def _default_config():
     """Built-in default config (matches the shipped github-kanban-bridge-config.json)."""
     return {
         "board_slug": "agentic-foundation",
         "board_name": "Agentic Foundation",
         "default_profile": "scala-coder",
+        "projects": [],
         "label_profiles": {
             "bug": "scala-coder", "feature": "scala-coder", "refactor": "scala-coder",
             "research": "researcher", "docs": "writer", "review": "reviewer",

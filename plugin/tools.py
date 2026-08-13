@@ -192,3 +192,32 @@ def github_kanban_prepare(args, **kwargs):
         json.dump(config, open(CONFIG_PATH, "w"), indent=2)
         return json.dumps({"updated": True, "board": config.get("board_slug")})
     return json.dumps({"no_changes": True, "message": "Use show=true to view config"})
+
+
+def github_kanban_project(args, **kwargs):
+    """Onboard / remove / list GitHub projects wired into the kanban bridge.
+
+    action: 'onboard' (register webhook + add repo), 'remove' (delete webhook +
+    drop repo), or 'list'.
+    """
+    action = args.get("action")
+    repo = args.get("repo", "")
+    url = args.get("url", "")
+    script = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "scripts", "github-project-manage.py"))
+
+    if action not in ("onboard", "remove", "list"):
+        return json.dumps({"error": "action must be onboard, remove, or list"})
+    if action in ("onboard", "remove") and not repo:
+        return json.dumps({"error": "repo (owner/repo) required for onboard/remove"})
+
+    cmd = ["python3", script, action]
+    if action in ("onboard", "remove"):
+        cmd.append(repo)
+        if action == "onboard" and url:
+            cmd += ["--url", url]
+    res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    return json.dumps({
+        "stdout": res.stdout.strip(),
+        "stderr": res.stderr.strip()[:500] if res.stderr else "",
+        "exit_code": res.returncode,
+    })

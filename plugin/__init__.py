@@ -3,7 +3,7 @@
 __version__ = "1.0.0"
 
 from .schemas import SCHEMAS
-from .tools import github_kanban_status, github_kanban_list, github_kanban_create_task, github_kanban_sync, github_kanban_assign, github_kanban_prepare
+from .tools import github_kanban_status, github_kanban_list, github_kanban_create_task, github_kanban_sync, github_kanban_assign, github_kanban_prepare, github_kanban_project
 from .slash import handle_slash
 from .cli import setup_cli, handle_cli
 
@@ -22,6 +22,7 @@ def register(ctx):
             "github_kanban_sync": github_kanban_sync,
             "github_kanban_assign": github_kanban_assign,
             "github_kanban_prepare": github_kanban_prepare,
+            "github_kanban_project": github_kanban_project,
         }.get(name)
         if handler:
             ctx.register_tool(

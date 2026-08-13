@@ -19,6 +19,7 @@ def load_config():
         "board_slug": "agentic-foundation",
         "board_name": "Agentic Foundation",
         "default_profile": "scala-coder",
+        "projects": [],
         "label_profiles": {
             "bug": "scala-coder", "feature": "scala-coder", "refactor": "scala-coder",
             "research": "researcher", "docs": "writer", "review": "reviewer",
@@ -124,6 +125,13 @@ def main():
     gh_labels = [l.get("name", "").lower() for l in issue.get("labels", [])]
     repo = payload.get("repository", {}).get("full_name", "unknown/repo")
     url = issue.get("html_url", "")
+
+    # Only process issues from onboarded projects. If the projects list is
+    # empty, the bridge accepts issues from any repo (legacy behavior).
+    projects = config.get("projects", [])
+    if projects and repo not in projects:
+        print(f"[SILENT] repo {repo} not onboarded; ignoring", file=sys.stderr)
+        sys.exit(0)
 
     # Apply auto-labeling rules
     all_labels = apply_auto_labels(title, body, gh_labels, config.get("auto_label_rules", []))
