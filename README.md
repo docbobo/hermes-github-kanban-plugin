@@ -1,0 +1,64 @@
+# hermes-github-kanban-plugin
+
+GitHub Issues <-> Hermes Kanban bridge. Syncs GitHub issues to a kanban board,
+assigns profiles by label, dispatches work via the gateway's embedded
+dispatcher, and syncs completed tasks back to GitHub (comment + close, with
+backfill for unlinked tasks).
+
+## Install
+
+```bash
+./install.sh
+hermes plugins enable github-kanban
+# Restart Hermes for the plugin to take effect
+```
+
+## What it does
+
+```
+GitHub issue (opened/reopened)
+  → zrok tunnel → webhook → github-issue-to-kanban.py
+  → kanban task (assigned by label)
+  → gateway dispatcher (every 60s) → assigned profile runs
+  → task done → kanban-sync-sweep.py (cron, every 5m)
+  → kanban-sync-back.py → GitHub issue commented + closed
+```
+
+## Profile assignment by label
+
+| Label | Profile |
+|--------|---------|
+| `bug`, `feature`, `refactor` | `coder` |
+| `research` | `researcher` |
+| `docs` | `writer` |
+| `review` | `reviewer` |
+| (none / other) | `orchestrator` |
+
+## CLI
+
+```bash
+hermes ghk status         # bridge health
+hermes ghk list           # list tasks
+hermes ghk create <title> --body "..." --assignee coder
+hermes ghk sync           # force sync sweep
+hermes ghk assign <id> <profile>
+hermes ghk webhook --url  # current public webhook URL (from zrok)
+```
+
+## Chat
+
+```
+/ghk status   /ghk list   /ghk sync   /ghk help
+```
+
+## Requirements
+
+- `GITHUB_TOKEN` in `~/.hermes/.env`
+- Hermes kanban board (`hermes kanban boards create agentic-foundation`)
+- Webhook platform enabled (`platforms.webhook.enabled: true`)
+- zrok tunnel (for public URL) — or any tunnel (ngrok, cloudflared)
+- Cron job for the sweep (see `install.sh`)
+
+## License
+
+MIT

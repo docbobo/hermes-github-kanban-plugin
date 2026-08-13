@@ -1,0 +1,11 @@
+name: github-kanban
+version: 1.0.0
+description: "GitHub Issues <-> Hermes Kanban bridge. Syncs issues to a kanban board, assigns profiles by label, dispatches work, and syncs completed tasks back to GitHub (with backfill)."
+provides_tools:
+  - ghk_status
+  - ghk_list
+  - ghk_create_task
+  - ghk_sync
+  - ghk_assign
+requires_env:
+  - GITHUB_TOKEN

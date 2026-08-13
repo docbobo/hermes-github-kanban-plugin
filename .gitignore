@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+*.json
+!plugin.yaml
+!webhook_subscriptions.json
