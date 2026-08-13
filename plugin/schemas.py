@@ -1,18 +1,18 @@
 """Tool schemas for the github-kanban plugin (what the LLM sees)."""
 
 SCHEMAS = {
-    "ghk_status": {
-        "name": "ghk_status",
+    "github_kanban_status": {
+        "name": "github_kanban_status",
         "description": "Show GitHub-Kanban bridge status: webhook route, board, dispatcher, cron job, sync state. Use when checking if the bridge is healthy.",
         "parameters": {"type": "object", "properties": {}, "required": []},
     },
-    "ghk_list": {
-        "name": "ghk_list",
+    "github_kanban_list": {
+        "name": "github_kanban_list",
         "description": "List kanban tasks on the agentic-foundation board (all statuses). Use to see what's queued, running, or done.",
         "parameters": {"type": "object", "properties": {}, "required": []},
     },
-    "ghk_create_task": {
-        "name": "ghk_create_task",
+    "github_kanban_create_task": {
+        "name": "github_kanban_create_task",
         "description": "Create a kanban task on the board and assign it to a profile. Use to add work items without going through GitHub issues.",
         "parameters": {
             "type": "object",
@@ -25,13 +25,13 @@ SCHEMAS = {
             "required": ["title"],
         },
     },
-    "ghk_sync": {
-        "name": "ghk_sync",
+    "github_kanban_sync": {
+        "name": "github_kanban_sync",
         "description": "Run a sync sweep: scan done tasks and sync them back to GitHub (comment + close existing issues, backfill mirror issues for unlinked tasks). Use to force a sync instead of waiting for the cron job.",
         "parameters": {"type": "object", "properties": {}, "required": []},
     },
-    "ghk_assign": {
-        "name": "ghk_assign",
+    "github_kanban_assign": {
+        "name": "github_kanban_assign",
         "description": "Reassign a kanban task to a different profile. Use to change who works on a task.",
         "parameters": {
             "type": "object",
@@ -42,8 +42,8 @@ SCHEMAS = {
             "required": ["task_id", "assignee"],
         },
     },
-    "ghk_prepare": {
-        "name": "ghk_prepare",
+    "github_kanban_prepare": {
+        "name": "github_kanban_prepare",
         "description": "Configure the bridge: set style/mood for issue descriptions, label-to-profile mappings, auto-labeling rules, and flow stages. Use to set up how incoming issues are handled.",
         "parameters": {
             "type": "object",

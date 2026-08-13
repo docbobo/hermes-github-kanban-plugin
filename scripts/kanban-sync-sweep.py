@@ -9,7 +9,7 @@ Run on a schedule (cron). Prints a summary to stdout.
 """
 import json, os, subprocess, sys
 
-CONFIG_PATH = os.path.expanduser("~/.hermes/scripts/ghk-bridge-config.json")
+CONFIG_PATH = os.path.expanduser("~/.hermes/scripts/github-kanban-bridge-config.json")
 
 def _load_board():
     """Read board slug from config, fall back to env/default."""

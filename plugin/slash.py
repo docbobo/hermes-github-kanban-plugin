@@ -1,10 +1,10 @@
-"""Slash command handler for /ghk."""
+"""Slash command handler for /github-kanban."""
 
 from . import cli as cli_mod
 
 
 def handle_slash(raw_args: str) -> str:
-    """Handle /ghk <action> in-session."""
+    """Handle /github-kanban <action> in-session."""
     parts = raw_args.strip().split(None, 1) if raw_args else []
     action = parts[0] if parts else "status"
     rest = parts[1] if len(parts) > 1 else ""
@@ -32,7 +32,7 @@ def handle_slash(raw_args: str) -> str:
 
     elif action == "help" or not action:
         return (
-            "/ghk <action>\n\n"
+            "/github-kanban <action>\n\n"
             "Actions:\n"
             "  status  - Show bridge status (webhook, board, cron, sync)\n"
             "  list    - List kanban tasks\n"
@@ -40,4 +40,4 @@ def handle_slash(raw_args: str) -> str:
             "  help    - Show this help\n"
         )
 
-    return f"Unknown action: {action}. Try /ghk help"
+    return f"Unknown action: {action}. Try /github-kanban help"

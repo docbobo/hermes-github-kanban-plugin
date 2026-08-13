@@ -1,4 +1,4 @@
-"""CLI subcommand tree for the github-kanban plugin: hermes ghk <verb>."""
+"""CLI subcommand tree for the github-kanban plugin: hermes github-kanban <verb>."""
 
 import argparse
 import json
@@ -9,8 +9,8 @@ BOARD = os.environ.get("KANBAN_BOARD", "agentic-foundation")
 
 
 def setup_cli(subparser):
-    """Build the `hermes ghk` subcommand tree."""
-    sub = subparser.add_subparsers(dest="ghk_action")
+    """Build the `hermes github-kanban` subcommand tree."""
+    sub = subparser.add_subparsers(dest="github_kanban_action")
 
     # status
     sub.add_parser("status", help="Show bridge status (webhook, board, cron, sync)")
@@ -60,10 +60,10 @@ def setup_cli(subparser):
 
 
 def handle_cli(args):
-    """Handle `hermes ghk <action>`."""
-    action = getattr(args, "ghk_action", None)
+    """Handle `hermes github-kanban <action>`."""
+    action = getattr(args, "github_kanban_action", None)
     if not action:
-        print("Usage: hermes ghk <status|list|create|sync|assign|webhook|install-sweep>")
+        print("Usage: hermes github-kanban <status|list|create|sync|assign|webhook|install-sweep>")
         return
 
     if action == "status":
@@ -165,7 +165,7 @@ def _cli_install_sweep(args):
 
 def _cli_prepare(args):
     """Configure style, mood, labels, and flow criteria for issue handling."""
-    CONFIG_PATH = os.path.expanduser("~/.hermes/scripts/ghk-bridge-config.json")
+    CONFIG_PATH = os.path.expanduser("~/.hermes/scripts/github-kanban-bridge-config.json")
 
     if args.reset:
         # Reset to defaults
@@ -257,7 +257,7 @@ def _cli_prepare(args):
 
 
 def _default_config():
-    """Built-in default config (matches the shipped ghk-bridge-config.json)."""
+    """Built-in default config (matches the shipped github-kanban-bridge-config.json)."""
     return {
         "board_slug": "agentic-foundation",
         "board_name": "Agentic Foundation",

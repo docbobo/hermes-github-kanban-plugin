@@ -15,7 +15,7 @@ def _kanban_cmd(args):
     return res.stdout, res.stderr, res.returncode
 
 
-def ghk_status(args, **kwargs):
+def github_kanban_status(args, **kwargs):
     """Show bridge status: webhook, board, cron, sync state."""
     parts = []
 
@@ -55,7 +55,7 @@ def ghk_status(args, **kwargs):
     return json.dumps({"status": "ok", "details": parts})
 
 
-def ghk_list(args, **kwargs):
+def github_kanban_list(args, **kwargs):
     """List kanban tasks on the board."""
     stdout, stderr, rc = _kanban_cmd(["list"])
     if rc != 0:
@@ -63,7 +63,7 @@ def ghk_list(args, **kwargs):
     return json.dumps({"tasks": stdout.strip()})
 
 
-def ghk_create_task(args, **kwargs):
+def github_kanban_create_task(args, **kwargs):
     """Create a kanban task."""
     title = args.get("title")
     body = args.get("body", "")
@@ -83,7 +83,7 @@ def ghk_create_task(args, **kwargs):
         return json.dumps({"created": True, "raw": res.stdout.strip()})
 
 
-def ghk_sync(args, **kwargs):
+def github_kanban_sync(args, **kwargs):
     """Run a sync sweep immediately."""
     env = dict(os.environ)
     # Ensure GITHUB_TOKEN is loaded
@@ -104,7 +104,7 @@ def ghk_sync(args, **kwargs):
     })
 
 
-def ghk_assign(args, **kwargs):
+def github_kanban_assign(args, **kwargs):
     """Reassign a kanban task."""
     task_id = args.get("task_id")
     assignee = args.get("assignee")
@@ -118,9 +118,9 @@ def ghk_assign(args, **kwargs):
     return json.dumps({"assigned": True, "task_id": task_id, "assignee": assignee})
 
 
-def ghk_prepare(args, **kwargs):
+def github_kanban_prepare(args, **kwargs):
     """Configure the bridge: style, labels, flow criteria."""
-    CONFIG_PATH = os.path.expanduser("~/.hermes/scripts/ghk-bridge-config.json")
+    CONFIG_PATH = os.path.expanduser("~/.hermes/scripts/github-kanban-bridge-config.json")
 
     def default_config():
         return {

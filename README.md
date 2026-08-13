@@ -37,18 +37,18 @@ GitHub issue (opened/reopened)
 ## CLI
 
 ```bash
-hermes ghk status         # bridge health
-hermes ghk list           # list tasks
-hermes ghk create <title> --body "..." --assignee coder
-hermes ghk sync           # force sync sweep
-hermes ghk assign <id> <profile>
-hermes ghk webhook --url  # current public webhook URL (from zrok)
+hermes github-kanban status         # bridge health
+hermes github-kanban list           # list tasks
+hermes github-kanban create <title> --body "..." --assignee coder
+hermes github-kanban sync           # force sync sweep
+hermes github-kanban assign <id> <profile>
+hermes github-kanban webhook --url  # current public webhook URL (from zrok)
 ```
 
 ## Chat
 
 ```
-/ghk status   /ghk list   /ghk sync   /ghk help
+/github-kanban status   /github-kanban list   /github-kanban sync   /github-kanban help
 ```
 
 ## Requirements

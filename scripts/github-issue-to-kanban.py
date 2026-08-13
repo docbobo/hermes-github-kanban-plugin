@@ -11,7 +11,7 @@ Exit nonzero              -> ignore
 """
 import json, subprocess, sys, os, re
 
-CONFIG_PATH = os.path.expanduser("~/.hermes/scripts/ghk-bridge-config.json")
+CONFIG_PATH = os.path.expanduser("~/.hermes/scripts/github-kanban-bridge-config.json")
 
 def load_config():
     """Load bridge config, with built-in defaults."""
