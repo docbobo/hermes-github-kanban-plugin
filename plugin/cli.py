@@ -41,6 +41,23 @@ def setup_cli(subparser):
     p_install = sub.add_parser("install-sweep", help="Install/update the cron sweep job")
     p_install.add_argument("--schedule", default="every 5m", help="Cron schedule (default: every 5m)")
 
+    # prepare — configure style/mood/labels for issue handling
+    p_prepare = sub.add_parser("prepare", help="Configure style, mood, labels, and flow criteria for issue handling")
+    p_prepare.add_argument("--show", action="store_true", help="Show current config")
+    p_prepare.add_argument("--board-slug", help="Kanban board slug (kebab-case)")
+    p_prepare.add_argument("--board-name", help="Kanban board display name")
+    p_prepare.add_argument("--default-profile", help="Default profile for unassigned issues")
+    p_prepare.add_argument("--tone", help="Style: tone for issue descriptions (e.g. 'concise, technical')")
+    p_prepare.add_argument("--format", default="markdown", help="Style: format (markdown, plain)")
+    p_prepare.add_argument("--language", default="english", help="Style: language")
+    p_prepare.add_argument("--label-profile", action="append", nargs=2, metavar=("LABEL", "PROFILE"),
+                           help="Map a GitHub label to a Hermes profile (repeatable)")
+    p_prepare.add_argument("--auto-label", action="append", metavar="RULE",
+                           help='Add auto-label rule: "field contains TEXT => label1,label2" (repeatable)')
+    p_prepare.add_argument("--flow-label", action="append", nargs=2, metavar=("STAGE", "DESCRIPTION"),
+                           help="Define a flow stage with description (repeatable)")
+    p_prepare.add_argument("--reset", action="store_true", help="Reset config to defaults")
+
 
 def handle_cli(args):
     """Handle `hermes ghk <action>`."""
@@ -63,6 +80,8 @@ def handle_cli(args):
         _cli_webhook(args)
     elif action == "install-sweep":
         _cli_install_sweep(args)
+    elif action == "prepare":
+        _cli_prepare(args)
 
 
 def _cli_status():
@@ -142,3 +161,113 @@ def _cli_install_sweep(args):
     """Install the cron sweep job via the hermes cron CLI."""
     print(f"To install the sweep cron job, use the cronjob tool or:")
     print(f"  hermes cron add --name kanban-github-sync --schedule '{args.schedule}' --script kanban-sync-sweep.py --no-agent")
+
+
+def _cli_prepare(args):
+    """Configure style, mood, labels, and flow criteria for issue handling."""
+    CONFIG_PATH = os.path.expanduser("~/.hermes/scripts/ghk-bridge-config.json")
+
+    if args.reset:
+        # Reset to defaults
+        config = _default_config()
+        json.dump(config, open(CONFIG_PATH, "w"), indent=2)
+        print("Config reset to defaults.")
+        return
+
+    # Load existing or defaults
+    if os.path.exists(CONFIG_PATH):
+        try:
+            config = json.load(open(CONFIG_PATH))
+        except Exception:
+            config = _default_config()
+    else:
+        config = _default_config()
+
+    if args.show:
+        print(json.dumps(config, indent=2))
+        return
+
+    changed = False
+
+    # Board settings
+    if args.board_slug:
+        config["board_slug"] = args.board_slug
+        changed = True
+    if args.board_name:
+        config["board_name"] = args.board_name
+        changed = True
+    if args.default_profile:
+        config["default_profile"] = args.default_profile
+        changed = True
+
+    # Style
+    if args.tone:
+        config.setdefault("style", {})
+        config["style"]["tone"] = args.tone
+        changed = True
+    if args.format:
+        config.setdefault("style", {})
+        config["style"]["format"] = args.format
+        changed = True
+    if args.language:
+        config.setdefault("style", {})
+        config["style"]["language"] = args.language
+        changed = True
+
+    # Label profiles
+    if args.label_profile:
+        config.setdefault("label_profiles", {})
+        for label, profile in args.label_profile:
+            config["label_profiles"][label] = profile
+        changed = True
+
+    # Auto-label rules
+    if args.auto_label:
+        config.setdefault("auto_label_rules", [])
+        for rule_str in args.auto_label:
+            # Parse: "field contains TEXT => label1,label2"
+            m = __import__("re").match(r'(.+?)\s*=>\s*(.+)', rule_str)
+            if m:
+                match_expr = m.group(1).strip()
+                labels = [l.strip() for l in m.group(2).split(",")]
+                config["auto_label_rules"].append({"match": match_expr, "labels": labels})
+        changed = True
+
+    # Flow labels
+    if args.flow_label:
+        config.setdefault("flow_labels", {})
+        for stage, desc in args.flow_label:
+            config["flow_labels"][stage] = {
+                "description": desc,
+                "auto_labels": [stage],
+            }
+        changed = True
+
+    if changed:
+        json.dump(config, open(CONFIG_PATH, "w"), indent=2)
+        print(f"Config updated: {CONFIG_PATH}")
+        print(f"  Board: {config.get('board_slug')}")
+        print(f"  Default profile: {config.get('default_profile')}")
+        print(f"  Tone: {config.get('style', {}).get('tone', 'N/A')}")
+        print(f"  Label profiles: {len(config.get('label_profiles', {}))} mappings")
+        print(f"  Auto-label rules: {len(config.get('auto_label_rules', []))} rules")
+        print(f"  Flow stages: {len(config.get('flow_labels', {}))} stages")
+    else:
+        print("No changes. Use --show to view current config, or pass options to update.")
+
+
+def _default_config():
+    """Built-in default config (matches the shipped ghk-bridge-config.json)."""
+    return {
+        "board_slug": "agentic-foundation",
+        "board_name": "Agentic Foundation",
+        "default_profile": "scala-coder",
+        "label_profiles": {
+            "bug": "scala-coder", "feature": "scala-coder", "refactor": "scala-coder",
+            "research": "researcher", "docs": "writer", "review": "reviewer",
+            "orchestrator": "orchestrator",
+        },
+        "auto_label_rules": [],
+        "flow_labels": {},
+        "style": {"tone": "concise, technical, direct", "format": "markdown", "language": "english"},
+    }

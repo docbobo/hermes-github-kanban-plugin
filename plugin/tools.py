@@ -116,3 +116,79 @@ def ghk_assign(args, **kwargs):
     if res.returncode != 0:
         return json.dumps({"error": res.stderr.strip()[:500]})
     return json.dumps({"assigned": True, "task_id": task_id, "assignee": assignee})
+
+
+def ghk_prepare(args, **kwargs):
+    """Configure the bridge: style, labels, flow criteria."""
+    CONFIG_PATH = os.path.expanduser("~/.hermes/scripts/ghk-bridge-config.json")
+
+    def default_config():
+        return {
+            "board_slug": "agentic-foundation",
+            "board_name": "Agentic Foundation",
+            "default_profile": "scala-coder",
+            "label_profiles": {
+                "bug": "scala-coder", "feature": "scala-coder", "refactor": "scala-coder",
+                "research": "researcher", "docs": "writer", "review": "reviewer",
+            },
+            "auto_label_rules": [],
+            "flow_labels": {},
+            "style": {"tone": "concise, technical, direct", "format": "markdown", "language": "english"},
+        }
+
+    if args.get("reset"):
+        config = default_config()
+        json.dump(config, open(CONFIG_PATH, "w"), indent=2)
+        return json.dumps({"reset": True})
+
+    # Load existing
+    if os.path.exists(CONFIG_PATH):
+        try:
+            config = json.load(open(CONFIG_PATH))
+        except Exception:
+            config = default_config()
+    else:
+        config = default_config()
+
+    if args.get("show"):
+        return json.dumps(config)
+
+    changed = False
+    if args.get("board_slug"):
+        config["board_slug"] = args["board_slug"]; changed = True
+    if args.get("board_name"):
+        config["board_name"] = args["board_name"]; changed = True
+    if args.get("default_profile"):
+        config["default_profile"] = args["default_profile"]; changed = True
+    if args.get("tone"):
+        config.setdefault("style", {})["tone"] = args["tone"]; changed = True
+    if args.get("label_profile"):
+        # label_profile is a JSON dict string like '{"bug": "coder"}'
+        try:
+            mapping = json.loads(args["label_profile"])
+            config.setdefault("label_profiles", {}).update(mapping)
+            changed = True
+        except json.JSONDecodeError:
+            return json.dumps({"error": "label_profile must be valid JSON"})
+    if args.get("auto_label_rule"):
+        import re
+        m = re.match(r'(.+?)\s*=>\s*(.+)', args["auto_label_rule"])
+        if m:
+            config.setdefault("auto_label_rules", []).append({
+                "match": m.group(1).strip(),
+                "labels": [l.strip() for l in m.group(2).split(",")],
+            })
+            changed = True
+    if args.get("flow_stage"):
+        # flow_stage is "stage=description"
+        if "=" in args["flow_stage"]:
+            stage, desc = args["flow_stage"].split("=", 1)
+            config.setdefault("flow_labels", {})[stage.strip()] = {
+                "description": desc.strip(), "auto_labels": [stage.strip()],
+            }
+            changed = True
+
+    if changed:
+        json.dump(config, open(CONFIG_PATH, "w"), indent=2)
+        return json.dumps({"updated": True, "board": config.get("board_slug")})
+    return json.dumps({"no_changes": True, "message": "Use show=true to view config"})

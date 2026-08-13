@@ -9,7 +9,19 @@ Run on a schedule (cron). Prints a summary to stdout.
 """
 import json, os, subprocess, sys
 
-BOARD = os.environ.get("KANBAN_BOARD", "agentic-foundation")
+CONFIG_PATH = os.path.expanduser("~/.hermes/scripts/ghk-bridge-config.json")
+
+def _load_board():
+    """Read board slug from config, fall back to env/default."""
+    if os.path.exists(CONFIG_PATH):
+        try:
+            cfg = json.load(open(CONFIG_PATH))
+            return cfg.get("board_slug", "agentic-foundation")
+        except Exception:
+            pass
+    return os.environ.get("KANBAN_BOARD", "agentic-foundation")
+
+BOARD = _load_board()
 STATE_FILE = os.path.expanduser("~/.hermes/kanban-sync-state.json")
 SYNC_SCRIPT = os.path.expanduser("~/.hermes/scripts/kanban-sync-back.py")
 

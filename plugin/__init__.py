@@ -3,7 +3,7 @@
 __version__ = "1.0.0"
 
 from .schemas import SCHEMAS
-from .tools import ghk_status, ghk_list, ghk_create_task, ghk_sync, ghk_assign
+from .tools import ghk_status, ghk_list, ghk_create_task, ghk_sync, ghk_assign, ghk_prepare
 from .slash import handle_slash
 from .cli import setup_cli, handle_cli
 
@@ -21,6 +21,7 @@ def register(ctx):
             "ghk_create_task": ghk_create_task,
             "ghk_sync": ghk_sync,
             "ghk_assign": ghk_assign,
+            "ghk_prepare": ghk_prepare,
         }.get(name)
         if handler:
             ctx.register_tool(

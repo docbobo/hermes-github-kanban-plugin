@@ -42,4 +42,23 @@ SCHEMAS = {
             "required": ["task_id", "assignee"],
         },
     },
+    "ghk_prepare": {
+        "name": "ghk_prepare",
+        "description": "Configure the bridge: set style/mood for issue descriptions, label-to-profile mappings, auto-labeling rules, and flow stages. Use to set up how incoming issues are handled.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "show": {"type": "boolean", "description": "Show current config"},
+                "board_slug": {"type": "string", "description": "Kanban board slug"},
+                "board_name": {"type": "string", "description": "Kanban board display name"},
+                "default_profile": {"type": "string", "description": "Default profile for unassigned issues"},
+                "tone": {"type": "string", "description": "Style: tone (e.g. 'concise, technical')"},
+                "label_profile": {"type": "string", "description": "Map: label=profile (JSON dict)"},
+                "auto_label_rule": {"type": "string", "description": "Auto-label rule: 'field contains TEXT => label1,label2'"},
+                "flow_stage": {"type": "string", "description": "Flow stage: stage=description"},
+                "reset": {"type": "boolean", "description": "Reset config to defaults"},
+            },
+            "required": [],
+        },
+    },
 }
