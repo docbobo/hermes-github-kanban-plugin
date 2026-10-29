@@ -1,6 +1,6 @@
 ---
 name: github-kanban
-description: "Use when syncing GitHub issues to Hermes kanban, assigning agents by label, and syncing completed work back. Covers the bridge pipeline, webhook setup, zrok tunnel, and troubleshooting."
+description: "Use when syncing GitHub issues to Hermes kanban, assigning agents by label, and syncing completed work back. Covers the bridge pipeline, webhook setup, public URL configuration, and troubleshooting."
 version: 1.0.0
 author: github-kanban-plugin
 license: MIT
@@ -19,7 +19,7 @@ unlinked tasks).
 
 ```
 GitHub issue (opened/reopened)
-  → zrok tunnel → webhook → github-issue-to-kanban.py
+  → your public URL (reverse proxy/tunnel) → webhook → github-issue-to-kanban.py
   → kanban task (assigned by label)
   → gateway dispatcher (every 60s) → assigned profile runs
   → task done → kanban-sync-sweep.py (cron, every 5m)
@@ -40,12 +40,13 @@ GitHub issue (opened/reopened)
 
 The bridge only creates kanban tasks for issues from **onboarded projects** — a
 GitHub repo (`owner/repo`) you've explicitly wired in. Onboarding registers a
-GitHub webhook on the repo (pointing at the bridge's public zrok URL) and adds
-the repo to the config's `projects` list. Removing deletes the webhook and drops
-the repo. If the `projects` list is empty, the bridge accepts issues from any
-repo (legacy behavior).
+GitHub webhook on the repo (pointing at the bridge's configured public URL) and
+adds the repo to the config's `projects` list. Removing deletes the webhook and
+drops the repo. If the `projects` list is empty, the bridge accepts issues from
+any repo (legacy behavior).
 
 ```bash
+hermes github-kanban webhook --set-url https://kanban.example.com
 hermes github-kanban project list
 hermes github-kanban project onboard e8kor/agentic-foundation
 hermes github-kanban project remove e8kor/agentic-foundation
@@ -63,7 +64,8 @@ hermes github-kanban create <title> --body "..." --assignee coder  # create a ta
 hermes github-kanban sync           # force a sync sweep now
 hermes github-kanban assign <id> <profile>  # reassign a task
 hermes github-kanban webhook        # show webhook route + secret
-hermes github-kanban webhook --url  # print the current public webhook URL (from zrok)
+hermes github-kanban webhook --set-url https://kanban.example.com  # set the public base URL
+hermes github-kanban webhook --url  # print the current public webhook URL
 hermes github-kanban install-sweep  # show how to install the cron sweep job
 hermes github-kanban project list   # list onboarded GitHub repos
 hermes github-kanban project onboard <owner/repo>   # register webhook + add repo
@@ -99,7 +101,7 @@ hermes github-kanban project remove <owner/repo>     # delete webhook + drop rep
 | Kanban board | `agentic-foundation` | Task queue |
 | Dispatcher | gateway embedded (every 60s) | Spawns assigned profile |
 | Cron | `kanban-github-sync` (every 5m) | Runs the sweep |
-| Tunnel | `zrok2-share.service` (systemd) | Public URL for GitHub → localhost |
+| Public URL | operator-provided reverse proxy/tunnel | Public URL for GitHub → localhost |
 
 ## Setup (first time)
 
@@ -108,17 +110,19 @@ hermes github-kanban project remove <owner/repo>     # delete webhook + drop rep
 3. **Create the board:** `hermes kanban boards create agentic-foundation`
 4. **Subscribe the webhook:** see `install.sh` output for the exact command
 5. **Install the cron sweep:** `hermes github-kanban install-sweep`
-6. **Start the zrok tunnel:** `systemctl --user start zrok2-share.service`
-7. **Register the GitHub webhook:** point the repo webhook to the zrok URL + secret
+6. **Expose Hermes publicly:** use your own reverse proxy or tunnel, then run
+   `hermes github-kanban webhook --set-url https://your.domain`
+7. **Register the GitHub webhook:** point the repo webhook to `hermes github-kanban webhook --url` + secret
 
 ## Troubleshooting
 
-- **Issues not creating kanban tasks:** check the zrok tunnel is running
-  (`systemctl --user status zrok2-share.service`), the webhook is registered
-  in GitHub (Settings → Webhooks), and the webhook secret matches.
+- **Issues not creating kanban tasks:** check your reverse proxy/tunnel is
+  running, `webhook_base_url` is set (`hermes github-kanban webhook --url`),
+  the webhook is registered in GitHub (Settings → Webhooks), and the webhook
+  secret matches.
 - **Completed tasks not syncing back:** run `hermes github-kanban sync` to force a sweep;
   check that `GITHUB_TOKEN` is in `~/.hermes/.env`.
-- **zrok URL changed after restart:** run `hermes github-kanban webhook --url` to get the
-  new URL, then update the GitHub repo's webhook URL.
+- **Public URL changed:** run `hermes github-kanban webhook --set-url https://new.domain`,
+  then update the GitHub repo's webhook URL to the output of `hermes github-kanban webhook --url`.
 - **Task has no GitHub link:** the sync-back will backfill a mirror issue
   (labeled `kanban-mirror`) in the project repo.

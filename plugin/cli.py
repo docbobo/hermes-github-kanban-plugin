@@ -4,8 +4,12 @@ import argparse
 import json
 import os
 import subprocess
+import sys
+import urllib.parse
 
 BOARD = os.environ.get("KANBAN_BOARD", "agentic-foundation")
+CONFIG_PATH = os.path.expanduser("~/.hermes/scripts/github-kanban-bridge-config.json")
+WEBHOOK_ROUTE = "github-issues-to-kanban"
 
 
 def setup_cli(subparser):
@@ -34,8 +38,10 @@ def setup_cli(subparser):
     p_assign.add_argument("assignee", help="Profile to assign")
 
     # webhook
-    p_webhook = sub.add_parser("webhook", help="Show webhook info (URL, secret)")
+    p_webhook = sub.add_parser("webhook", help="Show or configure webhook info (URL, secret)")
     p_webhook.add_argument("--url", action="store_true", help="Print only the webhook URL")
+    p_webhook.add_argument("--set-url", metavar="URL",
+                           help="Set the public base URL used to reach the bridge (e.g. https://kanban.example.com)")
 
     # sweep-install
     p_install = sub.add_parser("install-sweep", help="Install/update the cron sweep job")
@@ -63,7 +69,7 @@ def setup_cli(subparser):
     pj = p_project.add_subparsers(dest="project_action")
     pj_onboard = pj.add_parser("onboard", help="Onboard a GitHub repo: register webhook + add to config")
     pj_onboard.add_argument("repo", help="owner/repo")
-    pj_onboard.add_argument("--url", help="Public webhook URL (default: auto-detect from zrok)")
+    pj_onboard.add_argument("--url", help="Public webhook URL (default: configured webhook_base_url)")
     pj_remove = pj.add_parser("remove", help="Remove a GitHub repo: delete webhook + drop from config")
     pj_remove.add_argument("repo", help="owner/repo")
     pj.add_parser("list", help="List onboarded projects")
@@ -96,6 +102,47 @@ def handle_cli(args):
         _cli_project(args)
 
 
+def _load_bridge_config():
+    """Load the bridge config, filling in defaults for missing keys."""
+    config = _default_config()
+    if os.path.exists(CONFIG_PATH):
+        try:
+            with open(CONFIG_PATH) as f:
+                user_cfg = json.load(f)
+            for key, value in user_cfg.items():
+                if isinstance(value, dict) and isinstance(config.get(key), dict):
+                    config[key].update(value)
+                else:
+                    config[key] = value
+        except Exception:
+            pass
+    return config
+
+
+def _save_bridge_config(config):
+    os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
+    with open(CONFIG_PATH, "w") as f:
+        json.dump(config, f, indent=2)
+        f.write("\n")
+
+
+def _normalize_base_url(url):
+    """Validate a public base URL and strip a trailing slash or webhook route."""
+    url = (url or "").strip()
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise ValueError("webhook URL must be an absolute http(s) URL, e.g. https://kanban.example.com")
+    route_suffix = f"/webhooks/{WEBHOOK_ROUTE}"
+    base = url.rstrip("/")
+    if base.endswith(route_suffix):
+        base = base[: -len(route_suffix)]
+    return base.rstrip("/")
+
+
+def _webhook_url(base_url):
+    return f"{base_url}/webhooks/{WEBHOOK_ROUTE}"
+
+
 def _cli_status():
     r = subprocess.run(["hermes", "webhook", "list"], capture_output=True, text=True, timeout=10)
     for line in r.stdout.splitlines():
@@ -104,6 +151,8 @@ def _cli_status():
     print(f"\nBoard: {BOARD}")
     r2 = subprocess.run(["hermes", "kanban", "--board", BOARD, "list"], capture_output=True, text=True, timeout=10)
     print(r2.stdout.strip())
+    base_url = _load_bridge_config().get("webhook_base_url", "")
+    print(f"Webhook URL: {_webhook_url(base_url) if base_url else 'not configured'}")
     state = os.path.expanduser("~/.hermes/kanban-sync-state.json")
     print(f"Sync state: {len(json.load(open(state))) if os.path.exists(state) else 0} tasks tracked")
 
@@ -145,26 +194,44 @@ def _cli_assign(args):
 
 
 def _cli_webhook(args):
+    config = _load_bridge_config()
+
+    if args.set_url:
+        try:
+            base_url = _normalize_base_url(args.set_url)
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+        config["webhook_base_url"] = base_url
+        _save_bridge_config(config)
+        print(f"Webhook URL configured: {_webhook_url(base_url)}")
+        return
+
+    base_url = config.get("webhook_base_url", "")
+    if args.url:
+        if not base_url:
+            print("Error: no webhook_base_url configured.", file=sys.stderr)
+            print("Set it with: hermes github-kanban webhook --set-url https://your.domain", file=sys.stderr)
+            sys.exit(1)
+        print(_webhook_url(base_url))
+        return
+
+    print(f"Route: {WEBHOOK_ROUTE}")
+    print(f"URL: {_webhook_url(base_url) if base_url else 'not configured'}")
+    if not base_url:
+        print("Set it with: hermes github-kanban webhook --set-url https://your.domain")
+
     subs_path = os.path.expanduser("~/.hermes/webhook_subscriptions.json")
     if os.path.exists(subs_path):
-        subs = json.load(open(subs_path))
-        sub = subs.get("github-issues-to-kanban", {})
-        if args.url:
-            # Get the zrok URL from the systemd service log
-            r = subprocess.run(
-                ["journalctl", "--user", "-u", "zrok2-share.service", "--no-pager"],
-                capture_output=True, text=True, timeout=10)
-            import re
-            urls = re.findall(r"([a-z0-9]+\.shares\.zrok\.io)", r.stdout)
-            if urls:
-                print(f"https://{urls[-1]}/webhooks/github-issues-to-kanban")
-            else:
-                print("http://localhost:8644/webhooks/github-issues-to-kanban")
-        else:
-            print(f"Route: github-issues-to-kanban")
-            print(f"Events: {sub.get('events', [])}")
-            print(f"Script: {sub.get('script', 'N/A')}")
-            print(f"Secret: {sub.get('secret', 'N/A')[:8]}...")
+        try:
+            subs = json.load(open(subs_path))
+        except Exception:
+            subs = {}
+        sub = subs.get(WEBHOOK_ROUTE, {})
+        print(f"Events: {sub.get('events', [])}")
+        print(f"Script: {sub.get('script', 'N/A')}")
+        secret = sub.get("secret")
+        print(f"Secret: {secret[:8]}..." if secret else "Secret: N/A")
     else:
         print("No webhook subscriptions found")
 
@@ -177,23 +244,14 @@ def _cli_install_sweep(args):
 
 def _cli_prepare(args):
     """Configure style, mood, labels, and flow criteria for issue handling."""
-    CONFIG_PATH = os.path.expanduser("~/.hermes/scripts/github-kanban-bridge-config.json")
-
     if args.reset:
         # Reset to defaults
         config = _default_config()
-        json.dump(config, open(CONFIG_PATH, "w"), indent=2)
+        _save_bridge_config(config)
         print("Config reset to defaults.")
         return
 
-    # Load existing or defaults
-    if os.path.exists(CONFIG_PATH):
-        try:
-            config = json.load(open(CONFIG_PATH))
-        except Exception:
-            config = _default_config()
-    else:
-        config = _default_config()
+    config = _load_bridge_config()
 
     if args.show:
         print(json.dumps(config, indent=2))
@@ -256,10 +314,11 @@ def _cli_prepare(args):
         changed = True
 
     if changed:
-        json.dump(config, open(CONFIG_PATH, "w"), indent=2)
+        _save_bridge_config(config)
         print(f"Config updated: {CONFIG_PATH}")
         print(f"  Board: {config.get('board_slug')}")
         print(f"  Default profile: {config.get('default_profile')}")
+        print(f"  Webhook URL: {_webhook_url(config['webhook_base_url']) if config.get('webhook_base_url') else 'not configured'}")
         print(f"  Tone: {config.get('style', {}).get('tone', 'N/A')}")
         print(f"  Label profiles: {len(config.get('label_profiles', {}))} mappings")
         print(f"  Auto-label rules: {len(config.get('auto_label_rules', []))} rules")
@@ -293,6 +352,7 @@ def _default_config():
         "board_slug": "agentic-foundation",
         "board_name": "Agentic Foundation",
         "default_profile": "scala-coder",
+        "webhook_base_url": "",
         "projects": [],
         "label_profiles": {
             "bug": "scala-coder", "feature": "scala-coder", "refactor": "scala-coder",

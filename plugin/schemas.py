@@ -69,7 +69,7 @@ SCHEMAS = {
             "properties": {
                 "action": {"type": "string", "enum": ["onboard", "remove", "list"], "description": "What to do"},
                 "repo": {"type": "string", "description": "owner/repo (required for onboard/remove)"},
-                "url": {"type": "string", "description": "Public webhook URL (optional; auto-detected from zrok)"},
+                "url": {"type": "string", "description": "Public webhook URL (optional; defaults to the configured webhook_base_url)"},
             },
             "required": ["action"],
         },

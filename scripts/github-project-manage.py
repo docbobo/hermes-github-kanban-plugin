@@ -3,7 +3,7 @@
 
 A "project" is a GitHub repo (owner/name) whose issues flow into the Hermes
 kanban board. Onboarding registers a GitHub webhook on that repo (pointing at
-the bridge's public zrok URL) AND records the repo in the bridge config's
+the bridge's configured public URL) AND records the repo in the bridge config's
 `projects` list, so the webhook script only creates kanban tasks for onboarded
 repos. Removing deletes the webhook and drops the repo from the list.
 
@@ -11,11 +11,14 @@ Usage:
     github-project-manage.py onboard <owner/repo> [--url <public-webhook-url>]
     github-project-manage.py remove  <owner/repo>
     github-project-manage.py list
-    github-project-manage.py webhook-url          # print the current public URL
+    github-project-manage.py webhook-url          # print the configured public URL
+
+The public URL comes from `webhook_base_url` in the bridge config. Set it with:
+    hermes github-kanban webhook --set-url https://your.domain
 
 GITHUB_TOKEN is read from the environment or ~/.hermes/.env.
 """
-import json, os, re, subprocess, sys, urllib.error, urllib.request
+import json, os, sys, urllib.error, urllib.request
 
 GITHUB_API = "https://api.github.com"
 CONFIG_PATH = os.path.expanduser("~/.hermes/scripts/github-kanban-bridge-config.json")
@@ -25,14 +28,18 @@ WEBHOOK_ROUTE = "github-issues-to-kanban"
 def load_config():
     if os.path.exists(CONFIG_PATH):
         try:
-            return json.load(open(CONFIG_PATH))
+            with open(CONFIG_PATH) as f:
+                return json.load(f)
         except Exception:
             pass
     return {}
 
 
 def save_config(cfg):
-    json.dump(cfg, open(CONFIG_PATH, "w"), indent=2)
+    os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
+    with open(CONFIG_PATH, "w") as f:
+        json.dump(cfg, f, indent=2)
+        f.write("\n")
 
 
 def get_token():
@@ -75,18 +82,34 @@ def gh_request(method, path, payload=None):
         return e.code, body
 
 
-def get_public_webhook_url():
-    """Resolve the current public webhook URL from the zrok systemd service log."""
-    try:
-        r = subprocess.run(
-            ["journalctl", "--user", "-u", "zrok2-share.service", "--no-pager"],
-            capture_output=True, text=True, timeout=10)
-        urls = re.findall(r"([a-z0-9]+\\.shares\\.zrok\\.io)", r.stdout)
-        if urls:
-            return f"https://{urls[-1]}/webhooks/{WEBHOOK_ROUTE}"
-    except Exception:
-        pass
-    return f"http://localhost:8644/webhooks/{WEBHOOK_ROUTE}"
+def _route_suffix():
+    return f"/webhooks/{WEBHOOK_ROUTE}"
+
+
+def resolve_webhook_url(override=None):
+    """Resolve the public webhook URL from an override or the bridge config.
+
+    Returns None (after printing an actionable error) when no URL is
+    configured. Never falls back to localhost.
+    """
+    if override:
+        url = override.strip().rstrip("/")
+        if not url.startswith(("http://", "https://")):
+            print("error: webhook URL must be an absolute http(s) URL, "
+                  "e.g. https://kanban.example.com", file=sys.stderr)
+            return None
+        if "/webhooks/" in url:
+            return url
+        return f"{url}{_route_suffix()}"
+
+    base = (load_config().get("webhook_base_url") or "").strip().rstrip("/")
+    if not base:
+        print("error: no webhook_base_url configured; cannot register a webhook.", file=sys.stderr)
+        print("Set it with: hermes github-kanban webhook --set-url https://your.domain", file=sys.stderr)
+        return None
+    if base.endswith(_route_suffix()):
+        return base
+    return f"{base}{_route_suffix()}"
 
 
 def find_webhook(owner, repo):
@@ -169,7 +192,10 @@ def main():
     cmd = sys.argv[1]
 
     if cmd == "webhook-url":
-        print(get_public_webhook_url())
+        url = resolve_webhook_url()
+        if not url:
+            return 1
+        print(url)
         return 0
 
     if cmd == "list":
@@ -185,9 +211,12 @@ def main():
             sys.exit(1)
         owner, name = repo.split("/", 1)
         if cmd == "onboard":
-            url = get_public_webhook_url()
+            override = None
             if "--url" in sys.argv:
-                url = sys.argv[sys.argv.index("--url") + 1]
+                override = sys.argv[sys.argv.index("--url") + 1]
+            url = resolve_webhook_url(override)
+            if not url:
+                return 1
             return onboard(owner, name, url)
         else:
             return remove(owner, name)
